@@ -118,96 +118,59 @@ Comments: '//'.*?'\n'{skip();};
 Unknown: '!'|'@'|'#'|'$'|'^';       //delete
 
 //Rules
-program: TOK_PROGRAM ident (constDecl | varDecl | classDecl)*
+program: TOK_PROGRAM TOK_IDENTIFIER (constDecl | varDecl | classDecl)*
         TOK_LCB (methodDecl)+ TOK_RCB ;
 
-
-ident: TOK_IDENTIFIER;
-
-constDecl: TOK_FINAL varDecl ;
-
-varDecl: intCharDecl | arrayDecl;
-
-//INT and CHAR declaration with and without assignment
-intCharDecl: varDeclSEMI | varDeclAssi;     //var declaration with no assignment | with assignment
-varDeclSEMI: TOK_TYPE_INT ident TOK_SEMI;       //TOK_IDENTIFIER or ident?
-varDeclAssi: TOK_TYPE ident TOK_OP_ASSIGN TOK_VALUE TOK_SEMI;   //TOK_IDENTIFIER or ident?
-                        //type: char or int -- //value: letter or number -- ?
-
-//INT[] and CHAR[] declaration with and without assignment
-arrayDecl: arrayDeclSEMI | arrayDeclAssi;     //array declaration with no assignment | with assignment
-arrayDeclSEMI: TOK_TYPE TOK_LB TOK_RB ident
-                   TOK_SEMI;       //TOK_IDENTIFIER or ident?
-arrayDeclAssi: TOK_TYPE TOK_LB TOK_RB ident
-                   TOK_OP_ASSIGN TOK_NEW TOK_TYPE TOK_LB TOK_DIGIT+ TOK_RB TOK_SEMI;   //TOK_IDENTIFIER or ident?
-
-
-classDecl: TOK_CLASS ident TOK_LCB varDecl* TOK_RCB;
-
-methodDecl: (TOK_TYPE | TOK_VOID) ident TOK_LP formPars TOK_RP varDecl* block;
-formPars: TOK_TYPE ident (TOK_COMMA TOK_TYPE ident)*;
+varDecl: TOK_TYPE TOK_IDENTIFIER (TOK_COMMA TOK_IDENTIFIER)* TOK_SEMI;
+constDecl: TOK_FINAL TOK_TYPE TOK_IDENTIFIER TOK_OP_ASSIGN (TOK_LETTER+|TOK_CHAR) TOK_SEMI;
+classDecl: TOK_CLASS TOK_IDENTIFIER TOK_LCB varDecl* TOK_RCB;
+methodDecl: (TOK_TYPE | TOK_VOID) TOK_IDENTIFIER TOK_LP formPars? TOK_RP varDecl* block;
+formPars: TOK_TYPE TOK_IDENTIFIER (TOK_COMMA TOK_TYPE TOK_IDENTIFIER)*;
 block: TOK_LCB (statement)* TOK_RCB;
 
-arrayAssi: ident TOK_OP_ASSIGN TOK_NEW TOK_TYPE TOK_LB TOK_DIGIT+ TOK_RB TOK_SEMI; //array1= new int[20];
-arrayAssiValues: ident TOK_OP_ASSIGN actPars TOK_SEMI;       //array2= (1,2,3,4,5,6);        fill the whole array
-actPars: TOK_LP expr (TOK_COMMA expr)* TOK_RP;      //fill the whole array
-arrayAddValue: arrayIndex TOK_OP_ASSIGN TOK_VALUE TOK_SEMI;        //array3[2]= 'd';
+//arrayAssi: TOK_IDENTIFIER TOK_OP_ASSIGN TOK_NEW TOK_TYPE TOK_LB TOK_DIGIT+ TOK_RB TOK_SEMI; //array1= new int[20];
+//arrayAssiValues: TOK_IDENTIFIER TOK_OP_ASSIGN actPars TOK_SEMI;       //array2= (1,2,3,4,5,6);        fill the whole array
+//arrayAddValue: arrayIndex TOK_OP_ASSIGN TOK_VALUE TOK_SEMI;        //array3[2]= 'd';
 
+statement: designator (TOK_OP_ASSIGN expr | actPars) TOK_SEMI
+            | TOK_IF TOK_LP condition TOK_RP statement (TOK_ELSE statement)?
+            | TOK_WHILE TOK_LP condition TOK_RP statement
+            | methodreturn
+            | read
+            | print
+            | block
+            | TOK_SEMI;
 
-statement: designator (TOK_OP_ASSIGN expr | actPars) TOK_SEMI ;
-//
-/////expr???
-/*
-Statement = Designator ("=" Expr | ActPars) ";"
-| "if" "(" Condition ")" Statement ["else" Statement]
-| "while" "(" Condition ")" Statement
-| "return" [Expr] ";"                   ////
-| "read" "(" Designator ")" ";"         ////
-| "print" "(" Expr ["," number] ")" ";"
-| Block
-| ";".
+designator: TOK_IDENTIFIER (TOK_DOT TOK_IDENTIFIER | TOK_LB expr TOK_RB)*;
+actPars: TOK_LP (expr (TOK_COMMA expr)*)? TOK_RP;
 
-ActPars = "(" [ Expr {"," Expr} ] ")".   /////
-//Designator = ident {"." ident | "[" Expr "]"}. ////
-*/
-
-designator: arrayIndex | classField;
-
-arrayIndex:ident TOK_LB expr TOK_RB;      //array[index]
-classField: ident TOK_DOT ident;                //class.field
-
-return: TOK_RETURN expr TOK_SEMI;
+methodreturn: TOK_RETURN expr? TOK_SEMI;
 read: TOK_READ TOK_LP designator TOK_RP TOK_SEMI;
+print: TOK_PRINT TOK_LP expr (TOK_COMMA TOK_DIGIT+)? TOK_RP TOK_SEMI;
 
-
+condition: expr relop expr;
+relop: TOK_OP_REL;
 ///expr:
-expr: (TOK_MINUS)? term (TOK_OP_ADD term)*;
-term: factor (TOK_OP_TIMES factor)*;
-factor: designator actPars
+expr: (TOK_MINUS)? term (addop term)*;
+term: factor (mulop factor)*;
+factor: designator actPars?
            | TOK_DIGIT+
            | TOK_CHAR
-           | TOK_NEW ident [TOK_LB expr TOK_RB]
+           | TOK_NEW TOK_IDENTIFIER (TOK_LB expr TOK_RB)?
            | TOK_LP expr TOK_RP ;
-
-/*
-Expr = ["-"] Term {Addop Term}.
-Term = Factor {Mulop Factor}.
-Factor = Designator [ActPars]
-| number
-| charConst
-| "new" ident ["[" Expr "]"]    //
-| "(" Expr ")". ///
-
-*/
+addop: TOK_OP_ADD;
+mulop: TOK_OP_TIMES;
 
 TOK_IDENTIFIER: TOK_LETTER (TOK_LETTER|TOK_DIGIT)*;
+TOK_TYPE:TOK_IDENTIFIER (TOK_LB TOK_RB)?;
 TOK_DIGIT: [0-9];
 TOK_LETTER: [a-zA-Z];
 TOK_ASCII_CHARS: [\u0020-\u007E];
 TOK_SPECIAL_CHARS: '\n' | '\t' | '\r'  ;
-TOK_TYPE: TOK_TYPE_INT | TOK_TYPE_CHAR;
+TOK_CHAR_INT: TOK_TYPE_INT | TOK_TYPE_CHAR;
 TOK_VALUE: TOK_DIGIT+ | TOK_SINGLEQUOTE TOK_LETTER TOK_SINGLEQUOTE;
 TOK_CHAR: TOK_SINGLEQUOTE TOK_DIGIT TOK_SINGLEQUOTE| TOK_SINGLEQUOTE TOK_LETTER TOK_SINGLEQUOTE | TOK_SPECIAL_CHARS | TOK_ASCII_CHARS ;
+TOK_INT: TOK_DIGIT+;
 //A char literal : digit|letter|special characters:‘\n’‘\t’‘\r’|characters with ASCII btw 32&126
 
 //Keywords
