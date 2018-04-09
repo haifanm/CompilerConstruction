@@ -1,4 +1,4 @@
-grammar gr;
+grammar rules;
 
 options{
     language=Java;
@@ -89,18 +89,49 @@ import java.util.Stack;
 
     return new CommonToken(Unknown, builder.toString());
   }
-public Boolean checkScope(String name){
+
+  public Boolean checkScope(String name){
         if(symbolTable.get(name)==null){
             return false;
         }else{
             return true;
         }
-    }
-     public void addTempStack(String type, String name){
-    	    Stack<ASTNode> temp=new Stack<>();
-    	    temp.push(new ASTNode(type, name));
-    	    tempStack.push(temp);
-    	}
+  }
+  public void addTempStack(String type, String name){
+      Stack<ASTNode> temp=new Stack<>();
+      temp.push(new ASTNode(type, name));
+      tempStack.push(temp);
+  }
+
+  public static void putInNode(){
+
+
+  }
+  //return true if word "final" is mentioned before the id(type)
+  //most probably going to be deleted
+  public static boolean isFinal(){
+    return isFinal;     //static boolean (not declared yet)
+  }
+
+  /*
+  adds elements in last subtree
+  deletes last list
+  adds last subtree to last list (append as child)
+  dalates last subtree
+  */
+  public static void moveLastListToLastSubtree(){
+  }
+  //creates a new list
+  public static void createList(){
+  }
+  //create a node of the passed info and append it to last list
+  public static void addToLastList(String type, String name){
+  }
+  //creates a new subtree with root is the node created of the passed info
+  public static void createSubtree(String type, String name){
+  }
+  static String readType="";
+
 }
 @parser:: members{
 grLexer lexer;
@@ -119,10 +150,35 @@ WhiteSpace: (' ' | TOK_SPECIAL_CHARS)+{skip();};
 Comments: '//'.*?'\n'{skip();};
 
 //Rules
-program: TOK_PROGRAM TOK_IDENTIFIER (constDecl | varDecl | classDecl)*
-        TOK_LCB (methodDecl)+ TOK_RCB ;
-varDecl: TOK_TYPE TOK_IDENTIFIER (TOK_COMMA TOK_IDENTIFIER)* TOK_SEMI;
-constDecl: TOK_FINAL TOK_TYPE TOK_IDENTIFIER TOK_OP_ASSIGN (TOK_LETTER+|TOK_CHAR) TOK_SEMI;
+program: TOK_PROGRAM    {createList();}
+        TOK_IDENTIFIER  {createSubtree(type,name);}
+            (constDecl
+            | varDecl
+            | classDecl         )*
+        TOK_LCB
+            (methodDecl         )+
+        TOK_RCB ;
+
+
+varDecl: TOK_TYPE       {readType=type; createList(); addToLastList(type,name);}
+        TOK_IDENTIFIER  {createSubtree(type,name);}
+        (
+        TOK_COMMA       {moveLastListToLastSubtree();}
+        TOK_IDENTIFIER  {createSubtree(readType,name);}
+        )*
+        TOK_SEMI        {moveLastListToLastSubtree();}   ;
+
+
+constDecl: TOK_FINAL    {createList(); addToLastList(type,name);}
+        TOK_TYPE        {addToLastList(type,name);}
+        TOK_IDENTIFIER  {createSubtree(type,name);}
+        TOK_OP_ASSIGN   {addToLastList(type,name);}
+        (
+        TOK_VALUE       {addToLastList(type,name);}
+        )
+        TOK_SEMI        {moveLastListToLastSubtree();}  ;
+
+
 classDecl: TOK_CLASS TOK_IDENTIFIER TOK_LCB varDecl* TOK_RCB;
 methodDecl: (TOK_TYPE | TOK_VOID) TOK_IDENTIFIER TOK_LP formPars? TOK_RP varDecl* block;
 formPars: TOK_TYPE TOK_IDENTIFIER (TOK_COMMA TOK_TYPE TOK_IDENTIFIER)*;
